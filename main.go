@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -11,13 +10,19 @@ import (
 	"syscall"
 )
 
-func register(dest Destination, targetURL *url.URL) {
-	http.HandleFunc(dest.From, func(w http.ResponseWriter, r *http.Request) {
+func register(listenPath string, target Target) {
+	http.HandleFunc(listenPath, func(w http.ResponseWriter, r *http.Request) {
+		targetURL := &url.URL{
+			Scheme: target.Scheme,
+			Host:   target.Host,
+			Path:   target.Path,
+		}
+
 		proxy := httputil.NewSingleHostReverseProxy(targetURL)
 		proxy.Director = func(req *http.Request) {
 			req.URL.Scheme = targetURL.Scheme
 			req.URL.Host = targetURL.Host
-			req.URL.Path = dest.To
+			req.URL.Path = target.Path
 			req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 		}
 
@@ -26,20 +31,25 @@ func register(dest Destination, targetURL *url.URL) {
 }
 
 func main() {
-	targetURL, err := url.Parse("https://httpbingo.org")
-	if err != nil {
-		log.Fatal("Error parsing target URL:", err)
-	}
-
 	myConf := BFWConf{
-		Destinations: []Destination{
-			{From: "/hello", To: "/ip"},
-			{From: "/tmp", To: "/get"},
+		Proxy: []Proxy{
+			{
+				ListenPath: "/",
+				Target: Target{
+					Scheme: "http", Host: "httpbingo.org", Path: "/get",
+				},
+			},
+			{
+				ListenPath: "/tmp",
+				Target: Target{
+					Scheme: "http", Host: "httpbingo.org", Path: "/ip",
+				},
+			},
 		},
 	}
 
-	for _, destination := range myConf.Destinations {
-		register(destination, targetURL)
+	for _, proxy := range myConf.Proxy {
+		register(proxy.ListenPath, proxy.Target)
 	}
 
 	errs := make(chan error)

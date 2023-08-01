@@ -1,11 +1,16 @@
 package main
 
 type BFWConf struct {
-	Destinations []Destination `json:"destinations"`
+	Proxy []Proxy `json:"proxy"`
 }
 
-type Destination struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-	Port int    `json:"port"`
+type Target struct {
+	Scheme string `json:"scheme"`
+	Host   string `json:"host"`
+	Path   string `json:"path"`
+}
+
+type Proxy struct {
+	ListenPath string `json:"listenPath"`
+	Target     Target `json:"target"`
 }
